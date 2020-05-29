@@ -83,69 +83,22 @@ OSSClient *oss ;
     [channel invokeMethod:@"onInit" arguments:m1];
 }
 
-- (void)init:(FlutterMethodCall*)call result:(FlutterResult)result {
+(void)init:(FlutterMethodCall*)call result:(FlutterResult)result {
     
-    endpoint = call.arguments[@"endpoint"];
-    NSString *stsServer =call.arguments[@"stsserver"];
-    NSString *crypt_key =call.arguments[@"cryptkey"];
-    NSString *crypt_type =call.arguments[@"crypttype"];
+    endpoint = call.arguments[@"Endpoint"];
+    NSString *accessKeyId =call.arguments[@"AccessKeyId"];
+    NSString *accessKeySecret =call.arguments[@"AccessKeySecret"];
+    NSString *securityToken =call.arguments[@"SecurityToken"];
+    NSString *expiration =call.arguments[@"Expiration"];
     NSString *_id =call.arguments[@"id"];
     
     id<OSSCredentialProvider> credential1 = [[OSSFederationCredentialProvider alloc] initWithFederationTokenGetter:^OSSFederationToken * {
-        
-        NSLog(@"init credential1");
-        NSURL * url = [NSURL URLWithString:stsServer];
-        NSURLRequest * request = [NSURLRequest requestWithURL:url];
-        OSSTaskCompletionSource * tcs = [OSSTaskCompletionSource taskCompletionSource];
-        NSURLSession * session = [NSURLSession sharedSession];
-        // 发送请求
-        NSURLSessionTask * sessionTask = [session dataTaskWithRequest:request
-                                          
-                                                    completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
-                                                        if (error) {
-                                                            [tcs setError:error];
-                                                            return;
-                                                        }
-                                                        [tcs setResult:data];
-                                                    }];
-        [sessionTask resume];
-        // 需要阻塞等待请求返回
-        [tcs.task waitUntilFinished];
-        // 解析结果
-        if (tcs.task.error) {
-            NSLog(@"get token error: %@", tcs.task.error);
-            return nil;
-        } else {
-            // 返回数据是json格式，需要解析得到token的各个字段
-            
-            NSData *data=tcs.task.result;
-            
-            
-            if(![crypt_key isEqualToString:@""]){
-                NSDictionary * object = [NSJSONSerialization JSONObjectWithData:data
-                                                                        options:kNilOptions
-                                                                          error:nil];
-                if([crypt_type isEqualToString:@"aes"]){
-                    data=[aesDecryptString([object objectForKey:@"Data"],crypt_key) dataUsingEncoding:NSUTF8StringEncoding];
-                    NSLog(@"get token aes: %@", data);
-                }else{
-                    JKEncrypt * en = [[JKEncrypt alloc]init];
-                    data=[[en doDecEncryptStr:[object objectForKey:@"Data"] key:crypt_key] dataUsingEncoding:NSUTF8StringEncoding];
-                    NSLog(@"get token 3des: %@", data);
-                }
-            }
-            
-            NSDictionary *ossobject = [NSJSONSerialization JSONObjectWithData: data
-                                                                      options:kNilOptions
-                                                                        error:nil];
-            OSSFederationToken * token = [OSSFederationToken new];
-            token.tAccessKey = [ossobject objectForKey:@"AccessKeyId"];
-            token.tSecretKey = [ossobject objectForKey:@"AccessKeySecret"];
-            token.tToken = [ossobject objectForKey:@"SecurityToken"];
-            token.expirationTimeInGMTFormat = [ossobject objectForKey:@"Expiration"];
-            
+        OSSFederationToken * token = [OSSFederationToken new];
+            token.tAccessKey = accessKeyId;
+            token.tSecretKey = accessKeySecret;
+            token.tToken =    securityToken;
+            token.expirationTimeInGMTFormat = expiration;
             return token;
-        }
     }];
     oss = [[OSSClient alloc] initWithEndpoint:endpoint credentialProvider:credential1];
     NSDictionary *m1 = @{
@@ -154,6 +107,7 @@ OSSClient *oss ;
                          };
     [channel invokeMethod:@"onInit" arguments:m1];
 }
+
 - (void)update:(FlutterMethodCall*)call result:(FlutterResult)result {
     NSString * _id = call.arguments[@"id"];
     NSString * key = call.arguments[@"key"];
